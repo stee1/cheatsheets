@@ -15,6 +15,12 @@ kubectl run -ti --rm --image amouat/network-utils test bash
 ```
 
 
+# Delete pods which contains 'app' in the name
+```sh
+k get pods | grep app-  | awk '{print $1}' | xargs kubectl delete pod
+```
+
+
 # kubectl shortcut aliases from oh-my-zsh kubectl plugin
 ```sh
 # This command is used a LOT both below and in daily life
