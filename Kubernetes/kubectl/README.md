@@ -30,8 +30,14 @@ sudo kubeadm certs renew all
 # Update kube config
 sudo cp -f /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
-# Restart kube-system component to apply certs
-kubectl -n kube-system get pods | grep 'kube-apiserver\|kube-controller-manager\|kube-scheduler\|etcd' | awk '{print $1}' | xargs kubectl -n kube-system delete pod
+# Delete static manifests to restart kube-system pod with new certs
+sudo su
+mkdir manifests
+mv -v /etc/kubernetes/manifests/* manifests/
+# wait till cluster is down
+mv -v manifests/* /etc/kubernetes/manifests/
+# Verify kube-apiserver, kube-scheduler, kube-controller-manager and etcd pod are restarted
+kubectl get pods -n kube-system 
 # Manually copy new tokens from kube config
 cat ~/.kube/config 
 ```
