@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: logging
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: kibana:8.11.3
+          readinessProbe:
+            timeoutSeconds: 3
+            periodSeconds: 10
+            httpGet:
+              path: /api/status
+              port: 5601
+          livenessProbe:
+            timeoutSeconds: 3
+            periodSeconds: 10
+            httpGet:
+              path: /api/status
+              port: 5601
+          startupProbe:
+            failureThreshold: 100
+            periodSeconds: 3
+            httpGet:
+              path: /api/status
+              port: 5601
+          resources:
+            limits:
+              cpu: 300m
+            requests:
+              cpu: 50m
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch:9200"
+          ports:
+            - containerPort: 5601
+        - name: kibana-import
+          image: curlimages/curl:8.7.1
+          command:
+            ["sh", "-c", "sh /home/curl_user/kibana-import/import.sh; sleep infinity;"]
+          volumeMounts:
+            - name: kibana-import
+              mountPath: /home/curl_user/kibana-import
+          resources:
+            limits:
+              cpu: 10m
+              memory: 10Mi
+            requests:
+              cpu: 10m
+              memory: 10Mi
+      volumes:
+        - name: kibana-import
+          configMap: 
+            name: kibana-import
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kibana-import
+  namespace: logging
+data:
+  import.sh: |
+    #!/bin/sh
+
+    # Wait for kibana to start
+    startTime=$(date +%s)
+    secondsTimeout=300
+    endTime=$((startTime + secondsTimeout))
+    while :; do
+      status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5601/api/status)
+      if [ "$status" -eq 200 ]; then
+        echo "Kibana is up and running!"
+        break
+      else
+        echo "Waiting for Kibana to start..."
+        sleep 3
+        if [ "$(date +%s)" -gt "$endTime" ]; then
+            echo "Timeout reached, Kibana might not have started."
+            break
+        fi
+      fi
+    done
+
+    # Import index 
+    curl -X POST "http://localhost:5601/api/saved_objects/index-pattern/default" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d'
+    {
+      "attributes": {
+        "title": "*",
+        "timeFieldName": "@timestamp"
+      }
+    }
+    '
+
+    # Make it default
+    curl -X POST "http://localhost:5601/api/kibana/settings/defaultIndex" -H "Content-Type: application/json" -H "kbn-xsrf: true" -d '{"value":"default"}' 
+
+    # Import each search filter
+    for filename in `dirname "$0"`/*.json; do
+        curl -X POST "http://localhost:5601/api/saved_objects/search" -H "Content-Type: application/json" -H "kbn-xsrf: true" -d "@$filename"
+    done

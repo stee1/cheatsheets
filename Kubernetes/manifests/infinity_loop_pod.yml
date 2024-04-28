@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu
+  namespace: examples
+spec:
+  containers:
+  - name: ubuntu
+    image: ubuntu:latest
+    command: [ "/bin/bash", "-c", "--" ]
+    args: [ "while true; echo 'logs from infinitly running pod...'; do sleep 5; done;" ]
