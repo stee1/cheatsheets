@@ -21,6 +21,12 @@ k get pods | grep app- | awk '{print $1}' | xargs kubectl delete pod
 ```
 
 
+# Get file from secret
+```sh
+kubectl get secrets keycloak-certs -o "jsonpath={.data['cert\.pem']}" | base64 -d > cert.pem
+```
+
+
 # kubeadm certs renewal
 ```sh
 # Get current k8s certs status
