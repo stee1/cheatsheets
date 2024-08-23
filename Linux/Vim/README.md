@@ -8,6 +8,15 @@
 :q!
 ```
 
+# Send to background and return from terminal
+```sh
+:suspend
+```
+to return back to vim
+```sh
+fg
+```
+
 # Delete lines
 ```sh
 dd
@@ -67,6 +76,11 @@ ctrl+r
 :%s/yourtext/replacement/g(c)
 ```
 *c* is optional, used to enable confirmation
+
+# Add/remove tabs 
+```sh
+> or <
+```
 
 # Comment lines
 1. *v* to enter Visual mode
